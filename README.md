@@ -1,69 +1,77 @@
-# Bun Console
+# Arcade — Bun game console
 
-A local game library and process manager for independent Bun + React applications. Discover projects in `games/`, launch multiple apps on separate ports, inspect their logs, and play inside the console or in a new tab. Includes **Pulse**, a small reaction game.
+A local React console that discovers the immediate subfolders of `games/`, launches independent Bun apps, and provides an embedded player, a separate-tab link, status, and recent stdout/stderr output. Several games can run simultaneously. The library refreshes every two seconds.
+
+## Requirements
+
+- Bun 1.4.4 or newer (the version used to verify this project).
+- Linux or macOS for process-group shutdown support.
+- A modern browser.
 
 ## Run
 
 ```sh
+git clone https://github.com/Sparky4567/bun_console.git
+cd bun_console
 bun install
+cd games/gold_digger
+bun install
+cd ../..
 bun dev
 ```
 
-Open **http://127.0.0.1:3000**. For a console without development reloads, run `bun start`. Set `PORT` to change the console port: `PORT=4000 bun start`.
-
-## Add your games
-
-Place each normal project in its own immediate subfolder:
-
-```text
-games/
-  pulse/
-    package.json
-    src/
-  my-game/
-    package.json
-    src/
-```
-
-No console-specific manifest, model, or registration is needed. The console uses `name` and `description` from `package.json`, falling back to the folder name. It runs `bun run dev`, or `bun run start` when no dev script exists. Folders without a valid package or script appear with a helpful error. Discovery refreshes every two seconds.
-
-The console supplies `PORT`, `BUN_PORT`, `HOST`, and `HOSTNAME`. Each game's server **must respect `PORT`** rather than hardcoding a port. A typical Bun entry point is:
-
-```ts
-import page from "./index.html";
-
-Bun.serve({
-  hostname: "127.0.0.1",
-  port: Number(process.env.PORT || 3001),
-  routes: { "/*": page },
-  development: process.env.NODE_ENV !== "production",
-});
-```
-
-Each game runs from its own folder and serves from its own origin, so absolute asset paths, routing, API endpoints, and Bun hot reload work normally. The console waits up to 20 seconds for an HTTP response before marking a launch unsuccessful. Apps that forbid iframe embedding can be opened in a new tab.
-
-Install any game-specific dependencies from that game's directory with `bun install`. Games may also resolve shared dependencies such as React from the console's root `node_modules`; the included Pulse example uses this, without duplicating dependencies. The launcher does not automatically install packages or modify projects.
-
-## Runtime behavior
-
-- Multiple games can run at once. Returning to the library keeps them running; **Stop runtime** ends a game.
-- Recent stdout/stderr are bounded in memory and shown in the inspector.
-- Console shutdown stops game process groups on macOS/Linux. On Windows, only the direct child is terminated; full descendant cleanup is not guaranteed.
-- `bun dev` watches the console source. A console restart stops its games; game edits are handled by each game's own dev script.
-- Runtime state resets when the console restarts.
-
-This is a local runner for trusted projects: game scripts execute with your user's filesystem and environment access. It is not a sandbox. The console binds to loopback and checks Host and Origin for process-control requests. Keep it local. Each game's server should also bind to loopback.
-
-## Checks
+Open http://127.0.0.1:3000. To choose another console port: `PORT=4000 bun dev`.
 
 ```sh
 bun run typecheck
 bun test
 bun run build
+bun start
 ```
 
-Tests exercise folder discovery, invalid projects, concurrent launches, duplicate launch requests, logs, stopping, restarting, and failed launches. Runtime tests require permission to bind local TCP ports.
+`bun start` runs the console in production mode using Bun's HTML bundler. The standalone `dist/` build contains the frontend only; the Bun server is still required for discovery and process management. Frontend HMR is enabled in development; restart the console after changing backend code.
 
-`bun run build` produces frontend assets in `dist/`. The process manager still requires the Bun server (`bun start`); static hosting alone cannot launch local applications.
-# bun_console
-# bun_console
+## Included games
+
+| Folder | Runtime |
+| --- | --- |
+| `games/fort-defense` | Prebuilt game served from `dist/` |
+| `games/gold_digger` | Bun + React source project |
+| `games/jet_flight` | Prebuilt game served from `dist/` |
+
+## Add games
+
+Place each project in its own directory:
+
+```text
+games/
+  my-game/
+    package.json
+    src/
+  built-game/
+    dist/
+      index.html
+      ...assets
+```
+
+No custom manifest, plugin, or changes to React components are needed.
+
+For source projects, install dependencies in that project's folder with `bun install`. The console runs its `dev` script, falling back to `start`, from the game's directory. A source project's script takes precedence over its `dist/` build. Dependencies are not installed automatically.
+
+Each process receives a free port in `PORT` and `BUN_PORT`, plus `HOST=127.0.0.1`. Standard Bun servers that omit `port` use `BUN_PORT` automatically. For an explicitly configured server use:
+
+```ts
+Bun.serve({
+  hostname: process.env.HOST || "127.0.0.1",
+  port: Number(process.env.PORT || 3000),
+  // your existing routes/fetch handler
+});
+```
+
+Servers must honor the assigned port and serve HTTP at `/`; hardcoded ports need updating. A game is marked running once it responds to HTTP. Startup times out after approximately 10–60 seconds depending on connection attempts. Projects should keep their server process in the foreground. Logs retain the latest 24,000 characters per game.
+
+Folders with only `dist/index.html` run through a lightweight static Bun server, including an SPA fallback for extensionless URLs. Built assets should use relative or root-relative paths. Folder names become display titles automatically. Hidden folders and symlinks outside `games/` are ignored.
+
+Use **Launch game**, then play inside the console or open the game in a separate tab. **Stop game** ends its process group on Linux/macOS. Exiting the console with Ctrl+C also terminates running games. Windows process-tree cleanup is best effort.
+
+This is a local runner for trusted projects: launching a game executes its package script with your user permissions and environment. It is not a sandbox or a public multi-user hosting platform. The console and built-game servers bind to loopback; source games control their own bind address. Each game uses a separate origin, so browser storage is separate from the console and may change when a game restarts on another port.
