@@ -75,3 +75,7 @@ Folders with only `dist/index.html` run through a lightweight static Bun server,
 Use **Launch game**, then play inside the console or open the game in a separate tab. **Stop game** ends its process group on Linux/macOS. Exiting the console with Ctrl+C also terminates running games. Windows process-tree cleanup is best effort.
 
 This is a local runner for trusted projects: launching a game executes its package script with your user permissions and environment. It is not a sandbox or a public multi-user hosting platform. The console and built-game servers bind to loopback; source games control their own bind address. Each game uses a separate origin, so browser storage is separate from the console and may change when a game restarts on another port.
+
+## License
+
+[MIT](LICENSE) © 2026 Sparky4567.
