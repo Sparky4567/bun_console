@@ -66,3 +66,4 @@ Tests exercise folder discovery, invalid projects, concurrent launches, duplicat
 
 `bun run build` produces frontend assets in `dist/`. The process manager still requires the Bun server (`bun start`); static hosting alone cannot launch local applications.
 # bun_console
+# bun_console
